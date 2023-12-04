@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { FlatList, View, Text, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useGetJobByIdQuery } from '../store'; // Import the RTK Query hook
+import { useGetJobByIdQuery, useGetContactsByHrefQuery } from '../store'; // Import the RTK Query hook
 
 const Tab = createBottomTabNavigator();
 
@@ -21,13 +21,33 @@ function NotesTab() {
     );
 }
 
-function ContactsTab() {
-    return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text>Contacts</Text>
+function ContactsTab({ route }) {
+    const { jobDetails } = route.params;
+    const href = jobDetails?._links?.contacts?.href;
+    const { data: contactsData, error, isLoading } = useGetContactsByHrefQuery(href);
+
+    if (isLoading) return <ActivityIndicator />;
+    if (error) return <Text>Error loading contacts: {error.message}</Text>;
+
+    const renderItem = ({ item }) => (
+        <View style={{ marginBottom: 10 }}>
+            <Text>Name: {item.name}</Text>
+            <Text>Email: {item.email}</Text>
+            <Text>Telephone: {item.telephone}</Text>
+            {/* Render other contact details */}
         </View>
     );
+
+    return (
+        <FlatList
+            data={contactsData ? contactsData.contacts : []}
+            renderItem={renderItem}
+            keyExtractor={(item, index) => index.toString()}
+        />
+    );
 }
+
+
 
 export function JobDetailsScreen({ route }) {
     const { jobId } = route.params;
@@ -53,7 +73,7 @@ export function JobDetailsScreen({ route }) {
             <Tab.Navigator>
                 <Tab.Screen name="Files" component={FilesTab} />
                 <Tab.Screen name="Notes" component={NotesTab} />
-                <Tab.Screen name="Contacts" component={ContactsTab} />
+                <Tab.Screen name="Contacts" component={ContactsTab} initialParams={{ jobDetails: jobDetails }} />
             </Tab.Navigator>
         </>
     );
